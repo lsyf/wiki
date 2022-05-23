@@ -1,16 +1,14 @@
 <template>
   <div id="app">
-    <WikiEditor></WikiEditor>
+    <router-view/>
   </div>
 </template>
 
 <script>
-import WikiEditor from './components/WikiEditor.vue'
 
 export default {
   name: 'App',
   components: {
-    WikiEditor
   }
 }
 </script>

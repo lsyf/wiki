@@ -13,13 +13,13 @@
     <div id="content-box">
       <div id="editor-box">
         <div id="title-box">
-          <input placeholder="请输入标题">
+          <input placeholder="请输入标题" v-model="title">
         </div>
         <Editor
             id="main-editor"
             style=" min-height: 900px; margin-top: 20px;"
             :defaultConfig="editorConfig"
-            v-model="html"
+            v-model="content"
             @onChange="onChange"
             @onCreated="onCreated"
             :mode="mode"
@@ -34,6 +34,25 @@
 import {Editor, Toolbar} from '@wangeditor/editor-for-vue'
 import {Boot} from '@wangeditor/editor'
 import attachmentModule from '@wangeditor/plugin-upload-attachment'
+import {getRequest, postRequest} from "@/util/api";
+
+
+attachmentModule.elemsToHtml = [
+  {
+    type: 'attachment', // 节点 type ，重要！！！
+    elemToHtml: function (elem) {
+      const {link = '', fileName = ''} = elem;
+      return `<a data-w-e-type="attachment"
+                data-w-e-is-void
+                data-w-e-is-inline
+                data-link="${link}"
+                data-fileName="${fileName}"
+                href="${link}"
+                target="_blank">${fileName}
+              </a>`;
+    },
+  }
+]
 
 // 注册。要在创建编辑器之前注册，且只能注册一次，不可重复注册。
 Boot.registerModule(attachmentModule)
@@ -66,13 +85,13 @@ export default {
         MENU_CONF: {
           uploadImage: {
             withCredentials: true,
-            server: "http://localhost:8080/images",
+            server: "/images",
             fieldName: 'image',
             base64LimitSize: 0
           },
           // “上传附件”菜单的配置
           uploadAttachment: {
-            server: 'http://localhost:8080/files', // 服务端地址
+            server: '/files', // 服务端地址
             timeout: 25 * 1000,
             fieldName: 'file',
             maxFileSize: 100 * 1024 * 1024, // 100M
@@ -103,8 +122,9 @@ export default {
         },
       },
       editor: null,
+      title: '',
       content: '',
-      html: '',
+      data: '',
     }
 
   },
@@ -112,14 +132,24 @@ export default {
   watch: {},
   methods: {
     savePage() {
-
+      let p = {
+        title: this.title,
+        content: this.content
+      }
+      postRequest('/pages', p)
+          .then(res => {
+            console.log(res)
+          })
+          .catch(err => {
+            console.log(err)
+          });
     },
     onCreated(editor) {
       this.editor = Object.seal(editor) // 【注意】一定要用 Object.seal() 否则会报错
     },
     onChange(editor) {
-      this.content = JSON.stringify(editor.children)
-      this.html = editor.getHtml()
+      this.data = JSON.stringify(editor.children)
+      this.content = editor.getHtml()
     },
     focusEditor(e) {
       if (e.target.id === 'main-editor') {
@@ -132,6 +162,17 @@ export default {
   //生命周期 - 挂载完成（可以访问DOM元素）",html模板已渲染
   mounted() {
     document.getElementById('main-editor').addEventListener('click', this.focusEditor);
+
+    let id = this.$route.params.id
+    getRequest('/pages/' + id)
+        .then(res => {
+          this.title = res.title;
+          this.content = res.content;
+        })
+        .catch(err => {
+          console.log(err)
+        });
+
   },
   beforeDestroy() {
     document.getElementById('main-editor').removeEventListener('click', this.focusEditor);
